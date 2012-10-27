@@ -1,0 +1,12 @@
+This dir contains the test data for the the tool wrapper. You can add more
+test directories for further tests, but be careful with config1 and config2.
+
+Contents:
+  config1/4.8.conf      -> correct 4.8
+  config1/empty.conf    -> malformed, ignored because it's empty
+  config2/4.8.conf      -> incorrect 4.8, ignored because config1 is searched first
+  config2/5.conf        -> correct Qt 5
+  config2/oneline.conf  -> malformed, ignored
+  default/default.conf  -> contains the "default" override
+
+The "default" directory is not part of most tests.
