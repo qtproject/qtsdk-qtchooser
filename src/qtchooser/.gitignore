@@ -1,0 +1,9 @@
+!Makefile
+main.o
+main.obj
+main-test.o
+main-test.obj
+qtchooser
+qtchooser.exe
+qtchooser-test
+qtchooser-test.exe
