@@ -1,0 +1,5 @@
+!Makefile
+main.o
+qtchooser
+main.obj
+qtchooser.exe
