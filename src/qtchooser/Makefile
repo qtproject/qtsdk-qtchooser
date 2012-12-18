@@ -1,3 +1,6 @@
+prefix = /usr
+bindir = $(prefix)/bin
+
 ####### Compiler, tools and options
 
 INSTALL_PROGRAM = install -m 755 -p
@@ -33,7 +36,13 @@ clean:
 
 distclean: clean
 	-$(DEL_FILE) $(TARGET) $(TARGET_TEST)
-	-$(DEL_FILE) Makefile
+
+install: $(TARGET)
+	$(MKDIR) "$(INSTALL_ROOT)$(bindir)"
+	$(INSTALL_PROGRAM) $(TARGET) "$(INSTALL_ROOT)$(bindir)/$(TARGET)"
+
+uninstall:
+	-$(DEL_FILE) "$(INSTALL_ROOT)$(bindir)/$(TARGET)"
 
 
 ####### Compile
