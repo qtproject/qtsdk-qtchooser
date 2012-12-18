@@ -104,9 +104,9 @@ tst_ToolChooser::tst_ToolChooser()
     pathsWithDefault.prepend(testData + "/default" LIST_SEP);
 
 #ifdef Q_OS_WIN
-    toolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/qtchooser.exe";
+    toolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/qtchooser-test.exe";
 #else
-    toolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/qtchooser";
+    toolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/qtchooser-test";
 #endif
 
     QVERIFY(QFile::exists(toolPath));
