@@ -60,4 +60,14 @@ check: tests/auto/Makefile
 	cd src/qtchooser && $(MAKE) check
 	cd tests/auto && $(MAKE) check
 
-.PHONY: all install uninstall check clean distclean
+dist: .git
+	@ \
+	{ rev=$$(git describe --tags HEAD 2>/dev/null) && \
+	  name=qtchooser-$${rev#v}; } || \
+	{ rev=$$(git rev-parse --short HEAD) && \
+	  name=qtchooser-$$(git rev-list HEAD | wc -l)-g$$rev; } && \
+	echo "Creating package $$name" >&2 && \
+	git archive --prefix="$$name/" -9 --format=tar.gz -o $$name.tar.gz $$rev && \
+	git archive --prefix="$$name/" -9 --format=zip -v -o $$name.zip $$rev
+
+.PHONY: all install uninstall check clean distclean dist
