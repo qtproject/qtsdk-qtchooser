@@ -60,4 +60,4 @@ check: tests/auto/Makefile
 	cd src/qtchooser && $(MAKE) check
 	cd tests/auto && $(MAKE) check
 
-.PHONY: all install uninstall check
+.PHONY: all install uninstall check clean distclean
