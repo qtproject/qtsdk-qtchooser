@@ -50,8 +50,10 @@
 
 #ifdef Q_OS_WIN
 #  define LIST_SEP ";"
+#  define EXE_SUFFIX ".exe"
 #else
 #  define LIST_SEP ":"
+#  define EXE_SUFFIX ""
 #endif
 
 #define VERIFY_NORMAL_EXIT(proc) \
@@ -107,12 +109,7 @@ tst_ToolChooser::tst_ToolChooser()
 
     pathsWithDefault.prepend(testData + "/default" LIST_SEP);
 
-#ifdef Q_OS_WIN
-    toolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/qtchooser-test.exe";
-#else
-    toolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/qtchooser-test";
-#endif
-
+    toolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/test/qtchooser" EXE_SUFFIX;
     QVERIFY(QFile::exists(toolPath));
 }
 
@@ -139,7 +136,7 @@ QString tst_ToolChooser::tempFileName() const
 
 void tst_ToolChooser::list()
 {
-    QScopedPointer<QProcess> proc(execute(QStringList() << "-list-versions"));
+    QScopedPointer<QProcess> proc(execute(QStringList() << "-list-versions", testModeEnvironment));
     VERIFY_NORMAL_EXIT(proc);
 
     QStringList foundVersions;
@@ -304,7 +301,7 @@ void tst_ToolChooser::defaultQt()
     if (withDefault)
         env.insert("XDG_CONFIG_DIRS", pathsWithDefault);
 
-    QScopedPointer<QProcess> proc(execute(QStringList() << "-print-qmake", env));
+    QScopedPointer<QProcess> proc(execute(QStringList() << "-run-tool=qmake", env));
     QVERIFY(proc);
     if (withDefault) {
         QCOMPARE(proc->readAllStandardError().constData(), "");
@@ -338,6 +335,13 @@ void tst_ToolChooser::passArgs_data()
     QTest::newRow("unknown-opt-qt5") << (QStringList() << "-query" << "-qt5") << (QStringList() << "-query" << "-qt5");
     QTest::newRow("non-opt") << (QStringList() << ".") << (QStringList() << ".");
     QTest::newRow("non-opt-qt5") << (QStringList() << "." << "-qt5") << (QStringList() << "." << "-qt5");
+
+    // Since we're running a tool with QTCHOOSER_RUNTOOL set, it should not
+    // swallow the -print-env and -list-versions arguments either.
+    QTest::newRow("list-versions") << (QStringList() << "-list-versions") << (QStringList() << "-list-versions");
+    QTest::newRow("qt5-list-versions") << (QStringList() << "-qt5" << "-list-versions") << (QStringList() << "-list-versions");
+    QTest::newRow("print-env") << (QStringList() << "-print-env") << (QStringList() << "-print-env");
+    QTest::newRow("qt5-print-env") << (QStringList() << "-qt5" << "-print-env") << (QStringList() << "-print-env");
 }
 
 void tst_ToolChooser::passArgs()
@@ -345,7 +349,9 @@ void tst_ToolChooser::passArgs()
     QFETCH(QStringList, args);
     QFETCH(QStringList, expected);
 
-    QScopedPointer<QProcess> proc(execute(args));
+    QProcessEnvironment env = testModeEnvironment;
+    env.insert("QTCHOOSER_RUNTOOL", "testtool");
+    QScopedPointer<QProcess> proc(execute(args, env));
     VERIFY_NORMAL_EXIT(proc);
 
     // skip the first line of procstdout, as it contains the tool name
