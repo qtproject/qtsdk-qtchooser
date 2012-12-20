@@ -62,15 +62,19 @@
 #  include <process.h>
 #  define execv _execv
 #  define PATH_SEP "\\"
+#  define EXE_SUFFIX ".exe"
 #else
 #  include <sys/types.h>
 #  include <dirent.h>
 #  include <libgen.h>
 #  include <unistd.h>
 #  define PATH_SEP "/"
+#  define EXE_SUFFIX ""
 #endif
 
 using namespace std;
+
+static const char myName[] = "qtchooser" EXE_SUFFIX;
 
 static const char *argv0;
 enum Mode {
@@ -91,6 +95,7 @@ struct Sdk
 
 struct ToolWrapper
 {
+    int printHelp();
     int listVersions();
     int printEnvironment(const string &targetSdk);
     int runTool(const string &targetSdk, const string &targetTool, char **argv);
@@ -105,6 +110,19 @@ private:
     bool printSdk(const string &, Sdk &sdk);
     bool matchSdk(const string &targetSdk, Sdk &sdk);
 };
+
+int ToolWrapper::printHelp()
+{
+    puts("Usage:\n"
+         "  qtchooser { -list-versions | -print-env }\n"
+         "  qtchooser -run-tool=<tool name> [-qt=<Qt version>] [program arguments]\n"
+         "  <executable name> [-qt=<Qt version>] [program arguments]\n"
+         "\n"
+         "Environment variables accepted:\n"
+         " QTCHOOSER_RUNTOOL  name of the tool to be run (same as the -run-tool argument)\n"
+         " QT_SELECT          version of Qt to be run (same as the -qt argument)\n");
+    return 0;
+}
 
 int ToolWrapper::listVersions()
 {
@@ -296,6 +314,15 @@ static inline bool beginsWith(const char *haystack, const char *needle)
     return strncmp(haystack, needle, strlen(needle)) == 0;
 }
 
+static inline bool endsWith(const char *haystack, const char *needle)
+{
+    size_t haystackLen = strlen(haystack);
+    size_t needleLen = strlen(needle);
+    if (needleLen > haystackLen)
+        return false;
+    return strcmp(haystack + haystackLen - needleLen, needle) == 0;
+}
+
 int main(int argc, char **argv)
 {
     // search the environment for defaults
@@ -346,14 +373,23 @@ int main(int argc, char **argv)
     if (!targetSdk)
         targetSdk = "";
 
+    bool haveTargetTool = true;
+    if (strcmp(targetTool, myName) == 0)
+        haveTargetTool = false;
+    else if (endsWith(targetTool, myName) && targetTool[strlen(targetTool) - sizeof(myName)] == PATH_SEP[0])
+        haveTargetTool = false;
+
     ToolWrapper wrapper;
 
     // dispatch
     switch (operatingMode) {
     case RunTool:
-        return wrapper.runTool(targetSdk,
-                               targetTool,
-                               argv + optind - 1);
+        if (haveTargetTool)
+            return wrapper.runTool(targetSdk,
+                                   targetTool,
+                                   argv + optind - 1);
+        else
+            return wrapper.printHelp();
 
     case PrintEnvironment:
         return wrapper.printEnvironment(targetSdk);
