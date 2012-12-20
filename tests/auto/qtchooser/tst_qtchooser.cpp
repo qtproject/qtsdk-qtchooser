@@ -97,8 +97,8 @@ tst_ToolChooser::tst_ToolChooser()
     QString testData = QFINDTESTDATA("testdata");
     pathsWithDefault = testData + "/config1" LIST_SEP +
             testData + "/config2";
-    testModeEnvironment.insert("QTCHOOSER_PATHS", pathsWithDefault);
-    testModeEnvironment.insert("QTCHOOSER_TESTMODE", "1");
+    testModeEnvironment.insert("XDG_CONFIG_HOME", "/dev/null");
+    testModeEnvironment.insert("XDG_CONFIG_DIRS", pathsWithDefault);
     testModeEnvironment.insert("QT_SELECT", "4.8");
 
     pathsWithDefault.prepend(testData + "/default" LIST_SEP);
@@ -298,7 +298,7 @@ void tst_ToolChooser::defaultQt()
     QProcessEnvironment env = testModeEnvironment;
     env.remove("QT_SELECT");
     if (withDefault)
-        env.insert("QTCHOOSER_PATHS", pathsWithDefault);
+        env.insert("XDG_CONFIG_DIRS", pathsWithDefault);
 
     QScopedPointer<QProcess> proc(execute(QStringList() << "-print-qmake", env));
     QVERIFY(proc);
