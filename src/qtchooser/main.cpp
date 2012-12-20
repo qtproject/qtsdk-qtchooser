@@ -53,6 +53,7 @@
 #include <string>
 #include <vector>
 
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -78,6 +79,8 @@ static const char myName[] = "qtchooser" EXE_SUFFIX;
 
 static const char *argv0;
 enum Mode {
+    Unknown,
+    PrintHelp,
     RunTool,
     ListVersions,
     PrintEnvironment
@@ -326,7 +329,7 @@ static inline bool endsWith(const char *haystack, const char *needle)
 int main(int argc, char **argv)
 {
     // search the environment for defaults
-    Mode operatingMode = RunTool;
+    Mode operatingMode = Unknown;
     argv0 = basename(argv[0]);
     const char *targetSdk = getenv("QT_SELECT");
     const char *targetTool = getenv("QTCHOOSER_RUNTOOL");
@@ -356,10 +359,6 @@ int main(int argc, char **argv)
                 // -run-tool= argument
                 targetTool = arg + strlen("run-tool=");
                 operatingMode = RunTool;
-            } else if (strcmp(arg, "list-versions") == 0) {
-                operatingMode = ListVersions;
-            } else if (beginsWith(arg, "print-env")) {
-                operatingMode = PrintEnvironment;
             } else {
                 // not one of our arguments, must be for the target tool
                 break;
@@ -380,16 +379,49 @@ int main(int argc, char **argv)
         haveTargetTool = false;
 
     ToolWrapper wrapper;
+    if (operatingMode == RunTool || haveTargetTool) {
+        if (!haveTargetTool) {
+            fprintf(stderr, "%s: no tool selected. Stop.\n", argv0);
+            return 1;
+        }
+        return wrapper.runTool(targetSdk,
+                               targetTool,
+                               argv + optind - 1);
+    }
+
+    // running qtchooser itself
+    // check for our arguments
+    operatingMode = PrintHelp;
+    for ( ; optind < argc; ++optind) {
+        char *arg = argv[optind];
+        if (*arg == '-') {
+            ++arg;
+            if (*arg == '-')
+                ++arg;
+            if (strcmp(arg, "list-versions") == 0) {
+                operatingMode = ListVersions;
+            } else if (beginsWith(arg, "print-env")) {
+                operatingMode = PrintEnvironment;
+            } else if (strcmp(arg, "help") != 0) {
+                fprintf(stderr, "%s: unknown option: %s\n", argv0, arg - 1);
+                return 1;
+            }
+        } else {
+            fprintf(stderr, "%s: unknown argument: %s\n", argv0, arg);
+            return 1;
+        }
+    }
 
     // dispatch
     switch (operatingMode) {
     case RunTool:
-        if (haveTargetTool)
-            return wrapper.runTool(targetSdk,
-                                   targetTool,
-                                   argv + optind - 1);
-        else
-            return wrapper.printHelp();
+    case Unknown:
+        // can't happen!
+        assert(false);
+        return 127;
+
+    case PrintHelp:
+        return wrapper.printHelp();
 
     case PrintEnvironment:
         return wrapper.printEnvironment(targetSdk);
