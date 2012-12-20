@@ -72,7 +72,6 @@
 
 using namespace std;
 
-static bool testMode = false;
 static const char *argv0;
 enum Mode {
     RunTool,
@@ -138,16 +137,16 @@ int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char
 
     string tool = sdk.toolsPath + PATH_SEP + targetTool;
     argv[0] = &tool[0];
-    if (testMode) {
-        while (*argv)
-            printf("%s\n", *argv++);
-        return 0;
-    }
-
+#ifdef QTCHOOSER_TEST_MODE
+    while (*argv)
+        printf("%s\n", *argv++);
+    return 0;
+#else
     execv(argv[0], argv);
     fprintf(stderr, "%s: could not exec '%s': %s\n",
             argv0, argv[0], strerror(errno));
     return 1;
+#endif
 }
 
 static vector<string> stringSplit(const char *source)
@@ -178,26 +177,24 @@ static vector<string> stringSplit(const char *source)
 vector<string> ToolWrapper::searchPaths() const
 {
     vector<string> paths;
-    if (testMode) {
-        return stringSplit(getenv("QTCHOOSER_PATHS"));
+
+    // search the XDG config location directories
+    const char *globalDirs = getenv("XDG_CONFIG_DIRS");
+    paths = stringSplit(!globalDirs || !*globalDirs ? "/etc/xdg" : globalDirs);
+
+    string localDir;
+    const char *localDirEnv = getenv("XDG_CONFIG_HOME");
+    if (localDirEnv && *localDirEnv) {
+        localDir = localDirEnv;
     } else {
-        // search the XDG config location directories
-        const char *globalDirs = getenv("XDG_CONFIG_DIRS");
-        paths = stringSplit(!globalDirs || !*globalDirs ? "/etc/xdg" : globalDirs);
-
-        string localDir;
-        const char *localDirEnv = getenv("XDG_CONFIG_HOME");
-        if (localDirEnv && *localDirEnv) {
-            localDir = localDirEnv;
-        } else {
-            localDir = getenv("HOME"); // accept empty $HOME too
-            localDir += "/.config";
-        }
-        paths.push_back(localDir);
-
-        for (vector<string>::iterator it = paths.begin(); it != paths.end(); ++it)
-            *it += "/qtchooser/";
+        localDir = getenv("HOME"); // accept empty $HOME too
+        localDir += "/.config";
     }
+    paths.push_back(localDir);
+
+    for (vector<string>::iterator it = paths.begin(); it != paths.end(); ++it)
+        *it += "/qtchooser/";
+
     return paths;
 }
 
@@ -306,10 +303,6 @@ int main(int argc, char **argv)
     argv0 = basename(argv[0]);
     const char *targetSdk = getenv("QT_SELECT");
     const char *targetTool = getenv("QTCHOOSER_RUNTOOL");
-
-#ifdef QTCHOOSER_TEST_MODE
-    testMode = atoi(getenv("QTCHOOSER_TESTMODE")) > 0;
-#endif
 
     // if the target tool wasn't set in the environment, use argv[0]
     if (!targetTool || !*targetTool)
