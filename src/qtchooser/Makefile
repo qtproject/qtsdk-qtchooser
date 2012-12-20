@@ -15,7 +15,7 @@ OBJECTS       = main.o
 TARGET        = qtchooser
 
 OBJECTS_TEST  = main-test.o
-TARGET_TEST   = qtchooser-test
+TARGET_TEST   = test/qtchooser
 
 first: all
 check: $(TARGET_TEST)
@@ -28,6 +28,7 @@ $(TARGET):  $(OBJECTS)
 	$(CXX) $(LFLAGS) -o $(TARGET) $(OBJECTS)
 
 $(TARGET_TEST):  $(OBJECTS_TEST)
+	$(MKDIR) test
 	$(CXX) $(LFLAGS) -o $(TARGET_TEST) $(OBJECTS_TEST)
 
 clean:
@@ -48,10 +49,10 @@ uninstall:
 ####### Compile
 
 main.o: main.cpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
+	$(CXX) -c -Wall -Wextra $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
 main-test.o: main.cpp
-	$(CXX) -c -DQTCHOOSER_TEST_MODE -g $(CXXFLAGS) $(INCPATH) -o main-test.o main.cpp
+	$(CXX) -c -Wall -Wextra -DQTCHOOSER_TEST_MODE -g $(CXXFLAGS) $(INCPATH) -o main-test.o main.cpp
 
 ####### Install
 
