@@ -332,11 +332,15 @@ int main(int argc, char **argv)
     Mode operatingMode = Unknown;
     argv0 = basename(argv[0]);
     const char *targetSdk = getenv("QT_SELECT");
-    const char *targetTool = getenv("QTCHOOSER_RUNTOOL");
 
-    // if the target tool wasn't set in the environment, use argv[0]
-    if (!targetTool || !*targetTool)
-        targetTool = argv0;
+    // the default tool is the one in argv[0]
+    const char *targetTool = argv0;
+
+    // if argv[0] points back to us, use the environment
+    if (strcmp(targetTool, myName) == 0)
+        targetTool = getenv("QTCHOOSER_RUNTOOL");
+    else
+        operatingMode = RunTool;
 
     // check the arguments to see if there's an override
     int optind = 1;
@@ -355,7 +359,7 @@ int main(int argc, char **argv)
                 // -qtX or -qt=X argument
                 arg += 2;
                 targetSdk = *arg == '=' ? arg + 1 : arg;
-            } else if (beginsWith(arg, "run-tool=")) {
+            } else if (!targetTool && beginsWith(arg, "run-tool=")) {
                 // -run-tool= argument
                 targetTool = arg + strlen("run-tool=");
                 operatingMode = RunTool;
@@ -372,15 +376,9 @@ int main(int argc, char **argv)
     if (!targetSdk)
         targetSdk = "";
 
-    bool haveTargetTool = true;
-    if (strcmp(targetTool, myName) == 0)
-        haveTargetTool = false;
-    else if (endsWith(targetTool, myName) && targetTool[strlen(targetTool) - sizeof(myName)] == PATH_SEP[0])
-        haveTargetTool = false;
-
     ToolWrapper wrapper;
-    if (operatingMode == RunTool || haveTargetTool) {
-        if (!haveTargetTool) {
+    if (operatingMode == RunTool || targetTool) {
+        if (!targetTool) {
             fprintf(stderr, "%s: no tool selected. Stop.\n", argv0);
             return 1;
         }
