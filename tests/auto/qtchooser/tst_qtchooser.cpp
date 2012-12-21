@@ -57,7 +57,7 @@
 #endif
 
 #define VERIFY_NORMAL_EXIT(proc) \
-    QVERIFY(proc); \
+    if (!proc) return; \
     QCOMPARE(proc->readAllStandardError().constData(), ""); \
     QCOMPARE(proc->exitCode(), 0)
 
@@ -66,9 +66,17 @@ class tst_ToolChooser : public QObject
     Q_OBJECT
 
 public:
+    enum {
+        Copy = 0x1,
+        Symlink = 0x2,
+        Environment = 0x4,
+        CommandLine = 0x8
+    };
     QProcessEnvironment testModeEnvironment;
     QString toolPath;
     QString pathsWithDefault;
+    QString tempFileName;
+    QString tempFileBaseName;
 
     tst_ToolChooser();
     inline QProcess *execute(const QStringList &arguments)
@@ -77,12 +85,13 @@ public:
     { return execute(toolPath, arguments, env); }
     QProcess *execute(const QString &program, const QStringList &arguments, const QProcessEnvironment &env);
 
-    QString tempFileName() const;
+
+public Q_SLOTS:
+    void initTestCase();
+    void cleanup();
 
 private Q_SLOTS:
     void list();
-    void argv0_data();
-    void argv0();
     void selectTool_data();
     void selectTool();
     void selectQt_data();
@@ -110,7 +119,9 @@ tst_ToolChooser::tst_ToolChooser()
     pathsWithDefault.prepend(testData + "/default" LIST_SEP);
 
     toolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/test/qtchooser" EXE_SUFFIX;
-    QVERIFY(QFile::exists(toolPath));
+
+    tempFileBaseName = "tool-" + QString::number(getpid()) + ".exe";
+    tempFileName = QDir::currentPath() + "/" + tempFileBaseName;
 }
 
 QProcess *tst_ToolChooser::execute(const QString &program, const QStringList &arguments, const QProcessEnvironment &env)
@@ -128,10 +139,15 @@ QProcess *tst_ToolChooser::execute(const QString &program, const QStringList &ar
     return proc;
 }
 
-QString tst_ToolChooser::tempFileName() const
+void tst_ToolChooser::initTestCase()
 {
-    static int seq = 0;
-    return QDir::currentPath() + "/tool" + QString::number(seq++) + '-' + QString::number(getpid()) + ".exe";
+    QVERIFY(QFile::exists(toolPath));
+    QVERIFY(!QFile::exists(tempFileName));
+}
+
+void tst_ToolChooser::cleanup()
+{
+    QFile::remove(tempFileName);
 }
 
 void tst_ToolChooser::list()
@@ -151,75 +167,69 @@ void tst_ToolChooser::list()
     QVERIFY(foundVersions.contains("5"));
 }
 
-void tst_ToolChooser::argv0_data()
+void tst_ToolChooser::selectTool_data()
 {
-    QTest::addColumn<bool>("symlink");
-    QTest::newRow("copy") << false;
+    QTest::addColumn<int>("mode");
+    QTest::addColumn<QString>("expected");
 
+    QString tempExpected = "/" + tempFileBaseName;
+    QTest::newRow("copy") << int(Copy) << tempExpected;
 #ifdef Q_OS_UNIX
-    QTest::newRow("symlink") << true;
+    QTest::newRow("symlink") << int(Symlink) << tempExpected;
 #endif
+    QTest::newRow("env") << int(Environment) << "/environ";
+    QTest::newRow("cmdline") << int(CommandLine) << "/cmdline";
+
+    // argv[0] overrides everything:
+    QTest::newRow("copy+env") << int(Copy | Environment) << tempExpected;
+    QTest::newRow("copy+cmdline") << int(Copy | CommandLine) << tempExpected;
+    QTest::newRow("copy+env+cmdline") << int(Copy | Environment | CommandLine) << tempExpected;
+
+    // the environment overrides the command-line:
+    QTest::newRow("env+cmdline") << int(Environment | CommandLine) << "/environ";
 }
 
-void tst_ToolChooser::argv0()
+void tst_ToolChooser::selectTool()
 {
-    // check that the tool tries to execute something with the sane base name
-    // as its argv[0]
-    QFETCH(bool, symlink);
+    QFETCH(int, mode);
+    QProcessEnvironment env = testModeEnvironment;
+    QStringList args;
 
-    // We can't use QTemporaryFile here because we need to
-    // fully close the file in order to run the executable
-    QString tmpName = tempFileName();
     QFile source(toolPath);
-    if (!symlink) {
-        QFile tmp(tmpName);
-        QVERIFY(tmp.open(QIODevice::ReadWrite));
-        QVERIFY(source.open(QIODevice::ReadOnly));
-        tmp.write(source.readAll());
-        tmp.setPermissions(QFile::ExeOwner | QFile::ReadOwner | QFile::WriteOwner);
-        source.close();
-    } else {
+    if (mode & Symlink) {
 #ifndef Q_OS_UNIX
         qFatal("Impossible, cannot happen, you've broken the test!!");
 #else
         // even though QTemporaryFile has the file opened, we'll overwrite it with a symlink
         // on Unix, we're allowed to do that
-        QVERIFY(source.link(tmpName));
+        QVERIFY(source.link(tempFileName));
 #endif
+    } else if (mode & Copy) {
+        QFile tmp(tempFileName);
+        QVERIFY(tmp.open(QIODevice::ReadWrite));
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        tmp.write(source.readAll());
+        tmp.setPermissions(QFile::ExeOwner | QFile::ReadOwner | QFile::WriteOwner);
+        source.close();
     }
 
-    QScopedPointer<QProcess> proc(execute(tmpName, QStringList(), testModeEnvironment));
+    QString exe = toolPath;
+    if (mode & (Copy | Symlink)) {
+        QVERIFY(QFile::exists(tempFileName));
+        exe = tempFileName;
+    }
+
+    if (mode & Environment)
+        env.insert("QTCHOOSER_RUNTOOL", "environ");
+    if (mode & CommandLine)
+        args << "-run-tool=cmdline";
+
+    QScopedPointer<QProcess> proc(execute(exe, args, env));
     VERIFY_NORMAL_EXIT(proc);
 
+    QFETCH(QString, expected);
     QByteArray procstdout = proc->readAllStandardOutput().trimmed();
-    QVERIFY2(procstdout.endsWith(QFileInfo(tmpName).fileName().toLocal8Bit()), procstdout);
-
-    QFile::remove(tmpName);
-}
-
-void tst_ToolChooser::selectTool_data()
-{
-    QTest::addColumn<bool>("useEnv");
-    QTest::newRow("cmdline") << false;
-    QTest::newRow("env") << true;
-}
-
-void tst_ToolChooser::selectTool()
-{
-    QFETCH(bool, useEnv);
-    QProcessEnvironment env = testModeEnvironment;
-    QStringList args;
-
-    if (useEnv)
-        env.insert("QTCHOOSER_RUNTOOL", "testtool");
-    else
-        args << "-run-tool=testtool";
-
-    QScopedPointer<QProcess> proc(execute(args, env));
-    VERIFY_NORMAL_EXIT(proc);
-
-    QByteArray procstdout = proc->readAllStandardOutput().trimmed();
-    QVERIFY2(procstdout.endsWith("testtool"), procstdout);
+    QVERIFY2(procstdout.contains(expected.toLatin1()), procstdout);
 }
 
 void tst_ToolChooser::selectQt_data()
@@ -337,11 +347,13 @@ void tst_ToolChooser::passArgs_data()
     QTest::newRow("non-opt-qt5") << (QStringList() << "." << "-qt5") << (QStringList() << "." << "-qt5");
 
     // Since we're running a tool with QTCHOOSER_RUNTOOL set, it should not
-    // swallow the -print-env and -list-versions arguments either.
+    // swallow the -print-env, -list-versions and -run-tool arguments either.
     QTest::newRow("list-versions") << (QStringList() << "-list-versions") << (QStringList() << "-list-versions");
     QTest::newRow("qt5-list-versions") << (QStringList() << "-qt5" << "-list-versions") << (QStringList() << "-list-versions");
     QTest::newRow("print-env") << (QStringList() << "-print-env") << (QStringList() << "-print-env");
     QTest::newRow("qt5-print-env") << (QStringList() << "-qt5" << "-print-env") << (QStringList() << "-print-env");
+    QTest::newRow("run-tool") << (QStringList() << "-run-tool=foobar") << (QStringList() << "-run-tool=foobar");
+    QTest::newRow("qt5-run-tool") << (QStringList() << "-qt5" << "-run-tool=foobar") << (QStringList() << "-run-tool=foobar");
 }
 
 void tst_ToolChooser::passArgs()
