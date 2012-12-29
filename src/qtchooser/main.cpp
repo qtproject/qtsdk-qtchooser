@@ -68,6 +68,7 @@
 #  include <sys/types.h>
 #  include <dirent.h>
 #  include <libgen.h>
+#  include <pwd.h>
 #  include <unistd.h>
 #  define PATH_SEP "/"
 #  define EXE_SUFFIX ""
@@ -195,22 +196,38 @@ static vector<string> stringSplit(const char *source)
     return result;
 }
 
+static string qgetenv(const char *env, const string &defaultValue = string())
+{
+    const char *value = getenv(env);
+    return value ? string(value) : defaultValue;
+}
+
+static string userHome()
+{
+    const char *value = getenv("HOME");
+    if (value)
+        return value;
+
+#if defined(_WIN32) || defined(__WIN32__)
+    // ### FIXME: some Windows-specific code to get the user's home directory
+    // using GetUserProfileDirectory (userenv.h / dll)
+    return "C:";
+#else
+    struct passwd *pwd = getpwuid(getuid());
+    if (pwd && pwd->pw_dir)
+        return pwd->pw_dir;
+    return string();
+#endif
+}
+
 vector<string> ToolWrapper::searchPaths() const
 {
     vector<string> paths;
 
     // search the XDG config location directories
-    const char *globalDirs = getenv("XDG_CONFIG_DIRS");
-    paths = stringSplit(!globalDirs || !*globalDirs ? "/etc/xdg" : globalDirs);
+    paths = stringSplit(qgetenv("XDG_CONFIG_DIRS", "/etc/xdg").c_str());
 
-    string localDir;
-    const char *localDirEnv = getenv("XDG_CONFIG_HOME");
-    if (localDirEnv && *localDirEnv) {
-        localDir = localDirEnv;
-    } else {
-        localDir = getenv("HOME"); // accept empty $HOME too
-        localDir += "/.config";
-    }
+    string localDir = qgetenv("XDG_CONFIG_HOME", userHome() + PATH_SEP ".config");
     paths.push_back(localDir);
 
     for (vector<string>::iterator it = paths.begin(); it != paths.end(); ++it)
