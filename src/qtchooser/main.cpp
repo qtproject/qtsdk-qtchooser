@@ -198,10 +198,14 @@ static vector<string> stringSplit(const char *source)
 vector<string> ToolWrapper::searchPaths() const
 {
     vector<string> paths;
+#if defined(QTCHOOSER_GLOBAL_DIR)
+    paths = stringSplit(QTCHOOSER_GLOBAL_DIR);
+#endif
 
     // search the XDG config location directories
     const char *globalDirs = getenv("XDG_CONFIG_DIRS");
-    paths = stringSplit(!globalDirs || !*globalDirs ? "/etc/xdg" : globalDirs);
+    vector<string> globalDirsSplit = stringSplit(!globalDirs || !*globalDirs ? "/etc/xdg" : globalDirs);
+    paths.insert(paths.end(),globalDirsSplit.begin(),globalDirsSplit.end());
 
     string localDir;
     const char *localDirEnv = getenv("XDG_CONFIG_HOME");
