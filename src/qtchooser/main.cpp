@@ -261,9 +261,15 @@ static string qgetenv(const char *env, const string &defaultValue = string())
 vector<string> ToolWrapper::searchPaths() const
 {
     vector<string> paths;
+#if defined(QTCHOOSER_GLOBAL_DIR)
+    if(qgetenv("XDG_CONFIG_DIRS").empty()) {
+        paths = stringSplit(QTCHOOSER_GLOBAL_DIR);
+    }
+#endif
 
     // search the XDG config location directories
-    paths = stringSplit(qgetenv("XDG_CONFIG_DIRS", "/etc/xdg").c_str());
+    vector<string> globalDirsSplit = stringSplit(qgetenv("XDG_CONFIG_DIRS", "/etc/xdg").c_str());
+    paths.insert(paths.end(),globalDirsSplit.begin(),globalDirsSplit.end());
 
     string localDir = qgetenv("XDG_CONFIG_HOME", userHome() + PATH_SEP ".config");
     paths.push_back(localDir);
