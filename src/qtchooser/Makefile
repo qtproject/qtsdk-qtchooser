@@ -17,6 +17,10 @@ TARGET        = qtchooser
 OBJECTS_TEST  = main-test.o
 TARGET_TEST   = test/qtchooser
 
+ifneq ($(QTCHOOSER_GLOBAL_DIR),)
+	QTCHOOSER_GLOBAL_DIR_VAR:=-DQTCHOOSER_GLOBAL_DIR=\"$(QTCHOOSER_GLOBAL_DIR)\"
+endif
+
 first: all
 check: $(TARGET_TEST)
 
@@ -49,10 +53,10 @@ uninstall:
 ####### Compile
 
 main.o: main.cpp
-	$(CXX) -c -Wall -Wextra $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
+	$(CXX) -c -Wall -Wextra $(QTCHOOSER_GLOBAL_DIR_VAR) $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
 
 main-test.o: main.cpp
-	$(CXX) -c -Wall -Wextra -DQTCHOOSER_TEST_MODE -g $(CXXFLAGS) $(INCPATH) -o main-test.o main.cpp
+	$(CXX) -c -Wall -Wextra -DQTCHOOSER_TEST_MODE $(QTCHOOSER_GLOBAL_DIR_VAR) -g $(CXXFLAGS) $(INCPATH) -o main-test.o main.cpp
 
 ####### Install
 
