@@ -71,4 +71,9 @@ dist: .git
 	git archive --prefix="$$name/" -9 --format=tar.gz -o $$name.tar.gz $$rev && \
 	git archive --prefix="$$name/" -9 --format=zip -v -o $$name.zip $$rev
 
+distcheck: .git
+	git archive --prefix=qtchooser-distcheck/ --format=tar $(HEAD) | tar -xf -
+	cd qtchooser-distcheck && $(MAKE) check
+	-rm -rf qtchooser-distcheck
+
 .PHONY: all install uninstall check clean distclean dist
