@@ -94,7 +94,11 @@ private Q_SLOTS:
 tst_ToolChooser::tst_ToolChooser()
     : testModeEnvironment(QProcessEnvironment::systemEnvironment())
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QString testData = QFINDTESTDATA("testdata");
+#else
+    QString testData = SRCDIR "testdata";
+#endif
     pathsWithDefault = testData + "/config1" LIST_SEP +
             testData + "/config2";
     testModeEnvironment.insert("XDG_CONFIG_HOME", "/dev/null");
@@ -348,7 +352,7 @@ void tst_ToolChooser::passArgs()
     proc->readLine();
 
     QByteArray procstdout = proc->readAll().trimmed();
-    QCOMPARE(QString::fromLocal8Bit(procstdout), expected.join('\n'));
+    QCOMPARE(QString::fromLocal8Bit(procstdout), expected.join("\n"));
 }
 
 QTEST_MAIN(tst_ToolChooser)
