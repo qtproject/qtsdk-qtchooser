@@ -4,13 +4,16 @@
 qtchooser \- a wrapper used to select between Qt development binary versions
 .SH SYNOPSIS
 .B qtchooser
-\fI\-\-list\-versions\fR
+\fB\-list\-versions\fR
 .br
 .B qtchooser
-\fI\-\-qt=VERSION \-\-run\-tool=TOOL\fR
+\fB\-print\-env\fR [\fB\-qt=\fIversion\fR]
 .br
 .B qtchooser
-\fI\-\-qt=VERSION \-\-print\-env\fR
+\fB\-run\-tool=\fItool\fR [\fB\-qt=\fIversion\fR] [\fIprogram_arguments\fR]
+.br
+.B <executable_name>
+[\fB\-qt=\fIversion\fR] [\fIprogram_arguments\fR]
 .br
 .SH DESCRIPTION
 Qt is a cross-platform C++ application framework. Qt's primary feature
@@ -19,35 +22,44 @@ is its rich set of widgets that provide standard GUI functionality.
 The Qt Chooser provides a wrapper to switch between versions of Qt
 development binaries when multiple versions like 4 and 5 are installed
 or local Qt builds are to be used.
+
+It is commonly used via a symlink from an \fIexecutable_name\fR like qmake.
 .SH OPTIONS
 The options which apply to the
 \fBqtchooser\fR
 command are:
 .PP
-\fB\-\-list\-versions\fR
+\fB\-list\-versions\fR
 .RS 4
 Lists available Qt versions from the configuration files
 .RE
 .PP
-\fB\-\-qt=VERSION\fR
-.RS 4
-Selects VERSION as the Qt version to be used
-.RE
-.PP
-\fB\-\-run\-tool=TOOL\fR
-.RS 4
-Runs the selected TOOL
-.RE
-.PP
-\fB\-\-print\-env\fR
+\fB\-print\-env\fR
 .RS 4
 Prints environment information
+.RE
+.PP
+\fB\-qt=\fIversion\fR
+.RS 4
+Selects \fIversion\fR as the Qt version to be used
+.RE
+.PP
+\fB\-run\-tool=\fItool\fR
+.RS 4
+Runs the selected \fItool\fR.
 .RE
 .SH ENVIRONMENT
 .TP
 .B QT_SELECT
-Same as --qt=VERSION. If set, the selected configuration is used and binaries
+Same as \fB\-qt=\fIversion\fR. If set, the selected configuration is used and binaries
 symlinked to qtchooser will be executed without additional paramenters.
+.RE
+.TP
+.B XDG_CONFIG_HOME
+.TP
+.B XDG_CONFIG_DIRS
+Used as specified in
+<\fBhttp://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html\fR>
 .SH FILES
 .TP
 .I /etc/xdg/qtchooser/*.conf
