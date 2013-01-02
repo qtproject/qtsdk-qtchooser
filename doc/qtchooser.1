@@ -1,0 +1,66 @@
+.TH QTCHOOSER 1 "JANUARY 2, 2013"
+.\" Please adjust this date whenever revising the manpage.
+.SH NAME
+qtchooser \- a wrapper used to select between Qt development binary versions
+.SH SYNOPSIS
+.B qtchooser
+\fI\-\-list\-versions\fR
+.br
+.B qtchooser
+\fI\-\-qt=VERSION \-\-run\-tool=TOOL\fR
+.br
+.B qtchooser
+\fI\-\-qt=VERSION \-\-print\-env\fR
+.br
+.SH DESCRIPTION
+Qt is a cross-platform C++ application framework. Qt's primary feature
+is its rich set of widgets that provide standard GUI functionality.
+
+The Qt Chooser provides a wrapper to switch between versions of Qt 
+development binaries when multiple versions like 4 and 5 are installed 
+or local Qt builds are to be used.
+.SH OPTIONS
+The options which apply to the
+\fBqtchooser\fR
+command are:
+.PP
+\fB\-\-list\-versions\fR
+.RS 4
+Lists available Qt versions from the configuration files
+.RE
+.PP
+\fB\-\-qt=VERSION\fR
+.RS 4
+Selects VERSION as the Qt version to be used
+.RE
+.PP
+\fB\-\-run\-tool=TOOL\fR
+.RS 4
+Runs the selected TOOL
+.RE
+.PP
+\fB\-\-print\-env\fR
+.RS 4
+Prints environment information
+.RE
+.SH ENVIRONMENT
+.TP
+.B QT_SELECT
+Same as --qt=VERSION. If set, the selected configuration is used and binaries 
+symlinked to qtchooser will be executed without additional paramenters.
+.SH FILES
+.TP
+.I /etc/xdg/qtchooser/*.conf
+System-wide configuration files. Each has two lines, the first is the path 
+to the binaries and the second is the path to the Qt libraries. If a 
+\fIdefault.conf\fR is provided, the settings from it will be automatically 
+used in case nothing else is selected.
+.TP
+.I \fB$HOME\fP/.config/qtchooser/*.conf
+User configuration files.
+
+.SH AUTHOR
+qtchooser was written by Thiago Macieira from Intel.
+.PP
+This manual page was written by Timo Jyrinki <timo@debian.org>,
+for the Debian project (but may be used by others).
