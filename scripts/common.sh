@@ -73,8 +73,16 @@ function qt_select()
             # try to get the QTDIR from qmake now
             QTDIR=$(qmake -query QT_INSTALL_PREFIX)
             export QTDIR
+
+            # is this an uninstalled Qt build dir?
+            if [ -f $QTDIR/.qmake.cache ]; then
+                QTSRCDIR=$(sed -n '/QT_SOURCE_TREE *= */{s///;s/\$\$quote(\(.*\))$/\1/;p;}' $QTDIR/.qmake.cache)
+                export QTSRCDIR
+            else
+                unset QTSRCDIR
+            fi
         else
-            unset QTLIBDIR QTDIR QT_SELECT
+            unset QTLIBDIR QTSRCDIR QTDIR QT_SELECT
 
             if qtchooser -print-env >/dev/null 2>&1; then
                 echo "Using default Qt"
