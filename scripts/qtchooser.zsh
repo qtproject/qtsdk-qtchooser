@@ -36,7 +36,7 @@
 ## $QT_END_LICENSE$
 ##
 
-source ${${(%)$(echo %x)}%/*}/common.sh
+source ${${(%):-%x}%/*}/common.sh
 
 function qt_env_removefrom()
 {
