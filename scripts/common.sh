@@ -85,7 +85,9 @@ function qt_select()
     fi
 }
 
-function qt() { qt_select "$@" }
+function qt() {
+    qt_select "$@"
+}
 
 function qcd() {
     local dir="$1"
