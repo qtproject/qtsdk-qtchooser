@@ -49,7 +49,7 @@ function qt_select()
         if [ -z "$QT_SELECT" ]; then
             echo "Not using Qt."
         else
-            echo "Using Qt $QT_SELECT"
+            echo "Using Qt version: $QT_SELECT"
         fi
     else
         # Set the working Qt version
@@ -66,7 +66,7 @@ function qt_select()
             qt_env_addto LD_LIBRARY_PATH $QTLIBDIR
             qt_env_addto PKG_CONFIG_PATH $QTLIBDIR/pkgconfig
 
-            echo "Using Qt $1"
+            echo "Using Qt version: $1"
             export LD_LIBRARY_PATH PKG_CONFIG_PATH
             export QTLIBDIR QT_SELECT
 
@@ -85,9 +85,9 @@ function qt_select()
             unset QTLIBDIR QTSRCDIR QTDIR QT_SELECT
 
             if qtchooser -print-env >/dev/null 2>&1; then
-                echo "Using default Qt"
+                echo "Using default Qt version."
             else
-                echo "Not using Qt"
+                echo "Not using Qt."
             fi
         fi
     fi
