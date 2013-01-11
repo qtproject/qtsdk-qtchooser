@@ -150,6 +150,21 @@ int ToolWrapper::printEnvironment(const string &targetSdk)
     return 0;
 }
 
+bool isSymlink(const char *link, const char *target)
+{
+    char buf[512];
+    int count = readlink(link, buf, sizeof(buf));
+    if (count >= 0) {
+        buf[count] = '\0';
+        if (strcmp(buf, argv0) == 0) {
+            fprintf(stderr, "%s: could not exec '%s' since it links to %s itself. Check your installation.\n",
+                    argv0, link, argv0);
+            return true;
+        }
+    }
+    return false;
+}
+
 int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char **argv)
 {
     Sdk sdk = selectSdk(targetSdk);
@@ -157,6 +172,11 @@ int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char
         return 1;
 
     string tool = sdk.toolsPath + PATH_SEP + targetTool;
+
+    // check if the tool is a symlink to ourselves
+    if (isSymlink(tool.c_str(), argv0))
+        return 1;
+
     argv[0] = &tool[0];
 #ifdef QTCHOOSER_TEST_MODE
     while (*argv)
