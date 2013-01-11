@@ -150,6 +150,37 @@ int ToolWrapper::printEnvironment(const string &targetSdk)
     return 0;
 }
 
+static inline bool beginsWith(const char *haystack, const char *needle)
+{
+    return strncmp(haystack, needle, strlen(needle)) == 0;
+}
+
+static inline bool endsWith(const char *haystack, const char *needle)
+{
+    size_t haystackLen = strlen(haystack);
+    size_t needleLen = strlen(needle);
+    if (needleLen > haystackLen)
+        return false;
+    return strcmp(haystack + haystackLen - needleLen, needle) == 0;
+}
+
+bool linksBackToSelf(const char *link, const char *target)
+{
+#if !defined(_WIN32) && !defined(__WIN32__)
+    char buf[512];
+    int count = readlink(link, buf, sizeof(buf));
+    if (count >= 0) {
+        buf[count] = '\0';
+        if (endsWith(buf, target) == 0) {
+            fprintf(stderr, "%s: could not exec '%s' since it links to %s itself. Check your installation.\n",
+                    target, link, target);
+            return true;
+        }
+    }
+#endif
+    return false;
+}
+
 int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char **argv)
 {
     Sdk sdk = selectSdk(targetSdk);
@@ -157,6 +188,11 @@ int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char
         return 1;
 
     string tool = sdk.toolsPath + PATH_SEP + targetTool;
+
+    // check if the tool is a symlink to ourselves
+    if (linksBackToSelf(tool.c_str(), argv0))
+        return 1;
+
     argv[0] = &tool[0];
 #ifdef QTCHOOSER_TEST_MODE
     while (*argv)
@@ -310,20 +346,6 @@ bool ToolWrapper::matchSdk(const string &targetSdk, Sdk &sdk)
     }
 
     return false;
-}
-
-static inline bool beginsWith(const char *haystack, const char *needle)
-{
-    return strncmp(haystack, needle, strlen(needle)) == 0;
-}
-
-static inline bool endsWith(const char *haystack, const char *needle)
-{
-    size_t haystackLen = strlen(haystack);
-    size_t needleLen = strlen(needle);
-    if (needleLen > haystackLen)
-        return false;
-    return strcmp(haystack + haystackLen - needleLen, needle) == 0;
 }
 
 int main(int argc, char **argv)
