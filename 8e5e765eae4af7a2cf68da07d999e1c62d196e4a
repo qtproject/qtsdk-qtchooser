@@ -1,0 +1,8 @@
+Sanity-Review+1: Qt Sanity Bot <qt_sanity_bot@ovi.com>
+Code-Review+2: Lars Knoll <lars.knoll@digia.com>
+Code-Review+1: Sune Vuorela <sune@vuorela.dk>
+Submitted-by: Thiago Macieira <thiago.macieira@intel.com>
+Submitted-at: Fri, 18 Jan 2013 12:57:58 +0100
+Reviewed-on: https://codereview.qt-project.org/43456
+Project: qt/qtchooser
+Branch: refs/heads/master
