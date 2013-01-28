@@ -58,6 +58,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <wordexp.h>
 
 #if defined(_WIN32) || defined(__WIN32__)
 #  include <process.h>
@@ -157,7 +158,11 @@ int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char
         return 1;
 
     string tool = sdk.toolsPath + PATH_SEP + targetTool;
-    argv[0] = &tool[0];
+    wordexp_t expandedPath;
+    if (wordexp(tool.c_str(), &expandedPath, 0))
+        argv[0] = &tool[0];
+    else
+        argv[0] = expandedPath.we_wordv[0];
 #ifdef QTCHOOSER_TEST_MODE
     while (*argv)
         printf("%s\n", *argv++);
