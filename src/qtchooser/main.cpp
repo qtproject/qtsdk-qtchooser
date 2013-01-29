@@ -76,6 +76,7 @@
 using namespace std;
 
 static const char myName[] = "qtchooser" EXE_SUFFIX;
+static const char *homeDirectory = getenv("HOME");
 
 static const char *argv0;
 enum Mode {
@@ -157,6 +158,15 @@ int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char
         return 1;
 
     string tool = sdk.toolsPath + PATH_SEP + targetTool;
+    if (tool[0] == '~') {
+        if (homeDirectory)
+            tool = homeDirectory + tool.substr(1);
+        else {
+            fprintf(stderr, "%s: $HOME is not defined, so could not exec '%s'\n",
+                argv0, tool.c_str());
+            return 1;
+        }
+    }
     argv[0] = &tool[0];
 #ifdef QTCHOOSER_TEST_MODE
     while (*argv)
@@ -208,7 +218,7 @@ vector<string> ToolWrapper::searchPaths() const
     if (localDirEnv && *localDirEnv) {
         localDir = localDirEnv;
     } else {
-        localDir = getenv("HOME"); // accept empty $HOME too
+        localDir = homeDirectory; // accept empty $HOME too
         localDir += "/.config";
     }
     paths.push_back(localDir);
