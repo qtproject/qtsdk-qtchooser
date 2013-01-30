@@ -151,6 +151,24 @@ int ToolWrapper::printEnvironment(const string &targetSdk)
     return 0;
 }
 
+static string userHome()
+{
+    const char *value = getenv("HOME");
+    if (value)
+        return value;
+
+#if defined(_WIN32) || defined(__WIN32__)
+    // ### FIXME: some Windows-specific code to get the user's home directory
+    // using GetUserProfileDirectory (userenv.h / dll)
+    return "C:";
+#else
+    struct passwd *pwd = getpwuid(getuid());
+    if (pwd && pwd->pw_dir)
+        return pwd->pw_dir;
+    return string();
+#endif
+}
+
 int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char **argv)
 {
     Sdk sdk = selectSdk(targetSdk);
@@ -158,6 +176,8 @@ int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char
         return 1;
 
     string tool = sdk.toolsPath + PATH_SEP + targetTool;
+    if (tool[0] == '~')
+        tool = userHome() + tool.substr(1);
     argv[0] = &tool[0];
 #ifdef QTCHOOSER_TEST_MODE
     while (*argv)
@@ -200,24 +220,6 @@ static string qgetenv(const char *env, const string &defaultValue = string())
 {
     const char *value = getenv(env);
     return value ? string(value) : defaultValue;
-}
-
-static string userHome()
-{
-    const char *value = getenv("HOME");
-    if (value)
-        return value;
-
-#if defined(_WIN32) || defined(__WIN32__)
-    // ### FIXME: some Windows-specific code to get the user's home directory
-    // using GetUserProfileDirectory (userenv.h / dll)
-    return "C:";
-#else
-    struct passwd *pwd = getpwuid(getuid());
-    if (pwd && pwd->pw_dir)
-        return pwd->pw_dir;
-    return string();
-#endif
 }
 
 vector<string> ToolWrapper::searchPaths() const
