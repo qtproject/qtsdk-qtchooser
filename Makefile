@@ -13,6 +13,8 @@ TOOLS = assistant \
 	qdbuscpp2xml \
 	qdbusviewer \
 	qdbusxml2cpp \
+	qdoc \
+	qdoc3 \
 	qglinfo \
 	qhelpconverter \
 	qhelpgenerator \
