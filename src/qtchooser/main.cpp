@@ -118,7 +118,7 @@ private:
 int ToolWrapper::printHelp()
 {
     puts("Usage:\n"
-         "  qtchooser { -list-versions | -print-env }\n"
+         "  qtchooser { -l | -list-versions | -print-env }\n"
          "  qtchooser -run-tool=<tool name> [-qt=<Qt version>] [program arguments]\n"
          "  <executable name> [-qt=<Qt version>] [program arguments]\n"
          "\n"
@@ -446,7 +446,10 @@ int main(int argc, char **argv)
             ++arg;
             if (*arg == '-')
                 ++arg;
-            if (strcmp(arg, "list-versions") == 0) {
+            // double-dash arguments are OK too
+            if (*arg == '-')
+                ++arg;
+            if (strcmp(arg, "list-versions") == 0 || strcmp(arg, "l") == 0) {
                 operatingMode = ListVersions;
             } else if (beginsWith(arg, "print-env")) {
                 operatingMode = PrintEnvironment;
