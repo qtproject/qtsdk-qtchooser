@@ -221,6 +221,15 @@ int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char
     return 0;
 #else
     execv(argv[0], argv);
+#ifdef __APPLE__
+    // failed; see if we have a .app package by the same name
+    {
+        char appPath[PATH_MAX];
+        snprintf(appPath, PATH_MAX, "%s.app/Contents/MacOS/%s",
+                 argv[0], basename(argv[0]));
+        execv(appPath, argv);
+    }
+#endif
     fprintf(stderr, "%s: could not exec '%s': %s\n",
             argv0, argv[0], strerror(errno));
     return 1;
