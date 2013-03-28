@@ -1,0 +1,9 @@
+Code-Review+1: Alan Alpert <aalpert@blackberry.com>
+Code-Review+2: Thiago Macieira <thiago.macieira@intel.com>
+Code-Review+1: Frederik Gladhorn <frederik.gladhorn@digia.com>
+Sanity-Review+1: Qt Sanity Bot <srv.sanitybot@digia.com>
+Submitted-by: Thiago Macieira <thiago.macieira@intel.com>
+Submitted-at: Thu, 28 Mar 2013 19:17:23 +0100
+Reviewed-on: https://codereview.qt-project.org/51934
+Project: qt/qtchooser
+Branch: refs/heads/master
