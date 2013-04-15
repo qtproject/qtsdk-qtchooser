@@ -271,11 +271,12 @@ vector<string> ToolWrapper::searchPaths() const
 {
     vector<string> paths;
 
-    // search the XDG config location directories
-    paths = stringSplit(qgetenv("XDG_CONFIG_DIRS", "/etc/xdg").c_str());
-
     string localDir = qgetenv("XDG_CONFIG_HOME", userHome() + PATH_SEP ".config");
     paths.push_back(localDir);
+
+    // search the XDG config location directories
+    vector<string> xdgPaths = stringSplit(qgetenv("XDG_CONFIG_DIRS", "/etc/xdg").c_str());
+    paths.insert(paths.end(), xdgPaths.begin(), xdgPaths.end());
 
     for (vector<string>::iterator it = paths.begin(); it != paths.end(); ++it)
         *it += "/qtchooser/";
