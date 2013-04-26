@@ -1,0 +1,7 @@
+Sanity-Review+1: Qt Sanity Bot <qt_sanitybot@qt-project.org>
+Code-Review+2: Thiago Macieira <thiago.macieira@intel.com>
+Submitted-by: Thiago Macieira <thiago.macieira@intel.com>
+Submitted-at: Fri, 26 Apr 2013 23:06:25 +0200
+Reviewed-on: https://codereview.qt-project.org/54844
+Project: qt/qtchooser
+Branch: refs/heads/master
