@@ -48,6 +48,7 @@
  */
 
 #define _CRT_SECURE_NO_WARNINGS
+#define _POSIX_C_SOURCE 200809L
 
 #include <set>
 #include <string>
@@ -354,19 +355,43 @@ bool ToolWrapper::matchSdk(const string &targetSdk, Sdk &sdk)
         // 1) the first line contains the path to the Qt tools like qmake
         // 2) the second line contains the path to the Qt libraries
         // further lines are reserved for future enhancement
+#if _POSIX_VERSION >= 200809L
+        size_t len = 0;
+        char *line = 0;
+        ssize_t read = getline(&line, &len, f);
+        if (read < 0) {
+            free(line);
+            fclose(f);
+            return false;
+        }
+        sdk.toolsPath = line;
+
+        read = getline(&line, &len, f);
+        if (read < 0) {
+            free(line);
+            fclose(f);
+            return false;
+        }
+        sdk.librariesPath = line;
+
+        free(line);
+#elif defined(PATH_MAX)
         char buf[PATH_MAX];
         if (!fgets(buf, PATH_MAX - 1, f)) {
             fclose(f);
             return false;
         }
         sdk.toolsPath = buf;
-        sdk.toolsPath.erase(sdk.toolsPath.size() - 1); // drop newline
 
         if (!fgets(buf, PATH_MAX - 1, f)) {
             fclose(f);
             return false;
         }
         sdk.librariesPath = buf;
+#else
+# error "POSIX < 2008 and no PATH_MAX, fix me"
+#endif
+        sdk.toolsPath.erase(sdk.toolsPath.size() - 1); // drop newline
         sdk.librariesPath.erase(sdk.librariesPath.size() - 1); // drop newline
 
         fclose(f);
