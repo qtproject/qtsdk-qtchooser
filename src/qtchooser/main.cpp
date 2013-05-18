@@ -50,6 +50,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define _POSIX_C_SOURCE 200809L
 
+#include <algorithm>
 #include <set>
 #include <string>
 #include <vector>
@@ -109,10 +110,11 @@ private:
     vector<string> searchPaths() const;
 
     typedef bool (*VisitFunction)(const string &targetSdk, Sdk &item);
-    Sdk iterateSdks(const string &targetSdk, VisitFunction visit);
+    typedef void (*FinishFunction)(const set<string> &seenSdks);
+    Sdk iterateSdks(const string &targetSdk, VisitFunction visit, FinishFunction finish = 0);
     Sdk selectSdk(const string &targetSdk);
 
-    static bool printSdk(const string &, Sdk &sdk);
+    static void printSdks(const set<string> &seenNames);
     static bool matchSdk(const string &targetSdk, Sdk &sdk);
 };
 
@@ -131,7 +133,7 @@ int ToolWrapper::printHelp()
 
 int ToolWrapper::listVersions()
 {
-    iterateSdks(string(), &ToolWrapper::printSdk);
+    iterateSdks(string(), 0, &ToolWrapper::printSdks);
     return 0;
 }
 
@@ -292,7 +294,7 @@ vector<string> ToolWrapper::searchPaths() const
     return paths;
 }
 
-Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit)
+Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit, FinishFunction finish)
 {
     vector<string> paths = searchPaths();
     set<string> seenNames;
@@ -325,12 +327,15 @@ Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit)
             sdk.name = d->d_name;
             sdk.name.resize(fnamelen + 1 - sizeof wantedSuffix);
             sdk.configFile = path + PATH_SEP + d->d_name;
-            if (visit(targetSdk, sdk))
+            if (visit && visit(targetSdk, sdk))
                 return sdk;
         }
 
         closedir(dir);
     }
+
+    if (finish)
+        finish(seenNames);
 
     return Sdk();
 }
@@ -344,10 +349,14 @@ Sdk ToolWrapper::selectSdk(const string &targetSdk)
     return matchedSdk;
 }
 
-bool ToolWrapper::printSdk(const string &, Sdk &sdk)
+void ToolWrapper::printSdks(const set<string> &seenNames)
 {
-    printf("%s\n", sdk.name.c_str());
-    return false; // continue
+    vector<string> sorted;
+    copy(seenNames.begin(), seenNames.end(), back_inserter(sorted));
+    sort(sorted.begin(), sorted.end());
+    vector<string>::const_iterator it = sorted.begin();
+    for ( ; it != sorted.end(); ++it)
+        printf("%s\n", it->c_str());
 }
 
 bool ToolWrapper::matchSdk(const string &targetSdk, Sdk &sdk)
