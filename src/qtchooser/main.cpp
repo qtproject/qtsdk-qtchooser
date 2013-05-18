@@ -108,12 +108,12 @@ struct ToolWrapper
 private:
     vector<string> searchPaths() const;
 
-    typedef bool (ToolWrapper:: *VisitFunction)(const string &targetSdk, Sdk &item);
+    typedef bool (*VisitFunction)(const string &targetSdk, Sdk &item);
     Sdk iterateSdks(const string &targetSdk, VisitFunction visit);
     Sdk selectSdk(const string &targetSdk);
 
-    bool printSdk(const string &, Sdk &sdk);
-    bool matchSdk(const string &targetSdk, Sdk &sdk);
+    static bool printSdk(const string &, Sdk &sdk);
+    static bool matchSdk(const string &targetSdk, Sdk &sdk);
 };
 
 int ToolWrapper::printHelp()
@@ -325,12 +325,13 @@ Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit)
             sdk.name = d->d_name;
             sdk.name.resize(fnamelen + 1 - sizeof wantedSuffix);
             sdk.configFile = path + PATH_SEP + d->d_name;
-            if ((this->*visit)(targetSdk, sdk))
+            if (visit(targetSdk, sdk))
                 return sdk;
         }
 
         closedir(dir);
     }
+
     return Sdk();
 }
 
