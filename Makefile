@@ -65,7 +65,7 @@ check: tests/auto/Makefile
 HEAD          = HEAD
 dist: .git
 	@ \
-	{ rev=$$(git describe --tags $(HEAD) 2>/dev/null) && \
+	{ rev=$$(git describe --exact-match --tags $(HEAD) 2>/dev/null) && \
 	  name=qtchooser-$${rev#v}; } || \
 	{ rev=$$(git rev-parse --short $(HEAD)) && \
 	  name=qtchooser-$$(git rev-list $(HEAD) | wc -l)-g$$rev; } && \
