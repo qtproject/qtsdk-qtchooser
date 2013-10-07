@@ -36,6 +36,8 @@ TOOLS = assistant \
 
 # keep the above line empty
 
+MACTOOLS = macdeployqt
+
 all:
 	cd src/qtchooser && $(MAKE)
 
@@ -50,10 +52,16 @@ distclean:
 install:
 	cd src/qtchooser && $(MAKE) install
 	for tool in $(TOOLS); do ln -sf qtchooser "$(INSTALL_ROOT)$(bindir)/$$tool"; done
+	case `uname -s` in Darwin) \
+	    for tool in $(MACTOOLS); do ln -sf qtchooser "$(INSTALL_ROOT)$(bindir)/$$tool"; done \
+	;; esac
 
 uninstall:
 	cd src/qtchooser && $(MAKE) uninstall
 	-for tool in $(TOOLS); do rm -f "$(INSTALL_ROOT)$(bindir)/$$tool"; done
+	case `uname -s` in Darwin) \
+	    for tool in $(MACTOOLS); do rm -f "$(INSTALL_ROOT)$(bindir)/$$tool"; done \
+	;; esac
 
 tests/auto/Makefile: tests/auto/auto.pro
 	cd tests/auto && qmake -o Makefile auto.pro
