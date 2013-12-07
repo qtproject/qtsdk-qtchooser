@@ -282,7 +282,7 @@ vector<string> ToolWrapper::searchPaths() const
     paths.insert(paths.end(), xdgPaths.begin(), xdgPaths.end());
 
 #if defined(QTCHOOSER_GLOBAL_DIR)
-    if (qgetenv("XDG_CONFIG_DIRS").empty()) {
+    if (qgetenv("QTCHOOSER_NO_GLOBAL_DIR").empty()) {
         vector<string> globalPaths = stringSplit(QTCHOOSER_GLOBAL_DIR);
         paths.insert(paths.end(), globalPaths.begin(), globalPaths.end());
     }
