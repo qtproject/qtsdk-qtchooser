@@ -50,6 +50,12 @@ Runs the selected \fItool\fR.
 .RE
 .SH ENVIRONMENT
 .TP
+.B QTCHOOSER_NO_GLOBAL_DIR
+If qtchooser has been built with \fBQTCHOOSER_GLOBAL_DIR\fR (predefined search
+paths for qtchooser's configuration files, useful in some distros), setting this
+variable will override its effect.
+.RE
+.TP
 .B QT_SELECT
 Same as \fB\-qt=\fIversion\fR. If set, the selected configuration is used and binaries
 symlinked to qtchooser will be executed without additional parameters.
