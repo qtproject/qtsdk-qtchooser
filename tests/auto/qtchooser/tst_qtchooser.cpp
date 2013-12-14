@@ -163,6 +163,7 @@ void tst_ToolChooser::list()
         foundVersions << line;
     }
 
+    qDebug() << foundVersions;
     QVERIFY(foundVersions.contains("4.8"));
     QVERIFY(foundVersions.contains("5"));
 }

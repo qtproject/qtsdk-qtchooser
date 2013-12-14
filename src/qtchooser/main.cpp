@@ -79,6 +79,7 @@
 using namespace std;
 
 static const char myName[] = "qtchooser" EXE_SUFFIX;
+static const char confSuffix[] = ".conf";
 
 static const char *argv0;
 enum Mode {
@@ -313,11 +314,10 @@ Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit, Finis
                 continue;
 #endif
 
-            static const char wantedSuffix[] = ".conf";
             size_t fnamelen = strlen(d->d_name);
-            if (fnamelen < sizeof(wantedSuffix))
+            if (fnamelen < sizeof(confSuffix))
                 continue;
-            if (memcmp(d->d_name + fnamelen + 1 - sizeof(wantedSuffix), wantedSuffix, sizeof wantedSuffix - 1) != 0)
+            if (memcmp(d->d_name + fnamelen + 1 - sizeof(confSuffix), confSuffix, sizeof confSuffix - 1) != 0)
                 continue;
 
             if (seenNames.find(d->d_name) != seenNames.end())
@@ -325,7 +325,7 @@ Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit, Finis
 
             seenNames.insert(d->d_name);
             sdk.name = d->d_name;
-            sdk.name.resize(fnamelen + 1 - sizeof wantedSuffix);
+            sdk.name.resize(fnamelen + 1 - sizeof confSuffix);
             sdk.configFile = path + PATH_SEP + d->d_name;
             if (visit && visit(targetSdk, sdk))
                 return sdk;
@@ -355,8 +355,12 @@ void ToolWrapper::printSdks(const set<string> &seenNames)
     copy(seenNames.begin(), seenNames.end(), back_inserter(sorted));
     sort(sorted.begin(), sorted.end());
     vector<string>::const_iterator it = sorted.begin();
-    for ( ; it != sorted.end(); ++it)
-        printf("%s\n", it->c_str());
+    for ( ; it != sorted.end(); ++it) {
+        // strip the .conf suffix
+        string s = *it;
+        s.resize(s.size() - sizeof confSuffix + 1);
+        printf("%s\n", s.c_str());
+    }
 }
 
 bool ToolWrapper::matchSdk(const string &targetSdk, Sdk &sdk)
