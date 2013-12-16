@@ -56,6 +56,7 @@ install:
 	case `uname -s` in Darwin) \
 	    for tool in $(MACTOOLS); do ln -sf qtchooser "$(INSTALL_ROOT)$(bindir)/$$tool"; done \
 	;; esac
+	install -m 644 -p doc/qtchooser.1 $(INSTALL_ROOT)$(prefix)/share/man/man1
 
 uninstall:
 	cd src/qtchooser && $(MAKE) uninstall
