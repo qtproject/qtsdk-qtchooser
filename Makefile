@@ -1,3 +1,4 @@
+MKDIR  = mkdir -p
 prefix = /usr
 bindir = $(prefix)/bin
 TOOLS = assistant \
@@ -56,6 +57,7 @@ install:
 	case `uname -s` in Darwin) \
 	    for tool in $(MACTOOLS); do ln -sf qtchooser "$(INSTALL_ROOT)$(bindir)/$$tool"; done \
 	;; esac
+	$(MKDIR) $(INSTALL_ROOT)$(prefix)/share/man/man1
 	install -m 644 -p doc/qtchooser.1 $(INSTALL_ROOT)$(prefix)/share/man/man1
 
 uninstall:
