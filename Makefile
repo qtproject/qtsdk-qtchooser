@@ -23,6 +23,7 @@ TOOLS = assistant \
 	qml \
 	qml1plugindump \
 	qmlbundle \
+	qmlimportscanner \
 	qmlmin \
 	qmlplugindump \
 	qmlprofiler \
@@ -30,6 +31,7 @@ TOOLS = assistant \
 	qmltestrunner \
 	qmlviewer \
 	qtconfig \
+	qtpaths \
 	rcc \
 	uic \
 	uic3 \
