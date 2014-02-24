@@ -57,9 +57,9 @@
 #endif
 
 #define VERIFY_NORMAL_EXIT(proc) \
-    if (!proc) return; \
-    QCOMPARE(proc->readAllStandardError().constData(), ""); \
-    QCOMPARE(proc->exitCode(), 0)
+    if (!(proc)) return; \
+    QCOMPARE((proc)->readAllStandardError().constData(), ""); \
+    QCOMPARE((proc)->exitCode(), 0)
 
 class tst_ToolChooser : public QObject
 {
@@ -73,6 +73,7 @@ public:
         CommandLine = 0x8
     };
     QProcessEnvironment testModeEnvironment;
+    QString testData;
     QString toolPath;
     QString pathsWithDefault;
     QString tempFileName;
@@ -100,15 +101,18 @@ private Q_SLOTS:
     void defaultQt();
     void passArgs_data();
     void passArgs();
+    void install_data();
+    void install();
+    void install2();
 };
 
 tst_ToolChooser::tst_ToolChooser()
     : testModeEnvironment(QProcessEnvironment::systemEnvironment())
 {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-    QString testData = QFINDTESTDATA("testdata");
+    testData = QFINDTESTDATA("testdata");
 #else
-    QString testData = SRCDIR "testdata";
+    testData = SRCDIR "testdata";
 #endif
     pathsWithDefault = testData + "/config1" LIST_SEP +
             testData + "/config2";
@@ -372,6 +376,120 @@ void tst_ToolChooser::passArgs()
 
     QByteArray procstdout = proc->readAll().trimmed();
     QCOMPARE(QString::fromLocal8Bit(procstdout), expected.join("\n"));
+}
+
+void tst_ToolChooser::install_data()
+{
+    QTest::addColumn<QStringList>("args");
+    QTest::addColumn<QString>("expectedName");
+
+    QTest::newRow("missing-name") << QStringList() << QString();
+    QTest::newRow("missing-qmake") << (QStringList() << "sdk") << QString();
+
+    QString qmake = QLibraryInfo::location(QLibraryInfo::BinariesPath) + "/qmake";
+    QVERIFY(QFile::exists(qmake));
+
+    QStringList baseArgs;
+    baseArgs << "5" << qmake;
+
+    QTest::newRow("global-wouldoverwrite") << baseArgs << QString();
+    QTest::newRow("local-wouldoverwrite") << (QStringList() << "-local" << baseArgs) << QString();
+
+    baseArgs.prepend("-f");
+    QTest::newRow("global-overwrite") << baseArgs << testData + "/config2/qtchooser/5.conf";
+    QTest::newRow("local-overwrite") << (QStringList() << "-local" << baseArgs) << "/dev/null/qtchooser/5.conf";
+
+    baseArgs.clear();
+    baseArgs << "newname" << qmake;
+    QTest::newRow("global-newname") << baseArgs << testData + "/config2/qtchooser/newname.conf";
+    QTest::newRow("local-newname") << (QStringList() << "-local" << baseArgs) << "/dev/null/qtchooser/newname.conf";
+
+    // ensure that we find an SDK in a later path, even if we could install on an earlier one
+    QTest::newRow("global-wouldoverwrite-later") << (QStringList() << "later" << qmake) << QString();
+}
+
+void tst_ToolChooser::install()
+{
+    QFETCH(QStringList, args);
+    QFETCH(QString, expectedName);
+
+    QProcessEnvironment env = testModeEnvironment;
+    QScopedPointer<QProcess> proc(execute((QStringList() << "-install") + args, env));
+    QVERIFY(!!proc);
+    if (expectedName.isEmpty()) {
+        QByteArray err = proc->readAllStandardError();
+        QVERIFY(!err.isEmpty());
+        QVERIFY(proc->exitCode() != 0);
+        qDebug() << err.trimmed();
+    } else {
+        VERIFY_NORMAL_EXIT(proc);
+
+        QByteArray out = proc->readLine();
+        QVERIFY(!out.isEmpty());
+        QCOMPARE(QString(out).trimmed(), expectedName);
+
+        out = proc->readLine();
+        QCOMPARE(QString(out).trimmed(), QLibraryInfo::location(QLibraryInfo::BinariesPath));
+
+        out = proc->readLine();
+        QCOMPARE(QString(out).trimmed(), QLibraryInfo::location(QLibraryInfo::LibrariesPath));
+    }
+}
+
+void tst_ToolChooser::install2()
+{
+    // verify that the root is not writable by the current user
+    QString root = QDir::rootPath();
+    {
+        QFile f(root + "qtchooser");
+        QVERIFY(!f.exists());
+        QVERIFY(!f.open(QIODevice::ReadWrite));
+    }
+
+    QTemporaryDir tempdir;
+    QDir dir(tempdir.path());
+    dir.mkdir("/global");
+    dir.mkdir("/home");
+
+    QString realToolPath = QCoreApplication::applicationDirPath() + "/../../../src/qtchooser/qtchooser" EXE_SUFFIX;
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.remove("XDG_CONFIG_HOME");
+    env.insert("XDG_CONFIG_DIRS", tempdir.path() + "/global/etc/xdg" LIST_SEP "/");
+    env.insert("HOME", tempdir.path() + "/home");
+
+    QProcess proc;
+    proc.setProcessEnvironment(env);
+    QString qmake = QLibraryInfo::location(QLibraryInfo::BinariesPath) + "/qmake";
+    QString expectedContents = QLibraryInfo::location(QLibraryInfo::BinariesPath) + '\n' +
+                               QLibraryInfo::location(QLibraryInfo::LibrariesPath) + '\n';
+
+    // test 1: check that it installs into $HOME and recursively mkdirs
+    proc.setProgram(realToolPath);
+    proc.setArguments(QStringList() << "-install" << "-local" << "test" << qmake);
+    proc.start();
+    QVERIFY(proc.waitForFinished());
+    VERIFY_NORMAL_EXIT(&proc);
+
+    // find the file it must've created
+    {
+        QFile f(tempdir.path() + "/home/.config/qtchooser/test.conf");
+        QVERIFY2(f.open(QIODevice::ReadOnly), qPrintable(f.errorString()));
+        QCOMPARE(f.readAll(), expectedContents.toLocal8Bit());
+    }
+    QVERIFY(!QFile::exists(tempdir.path() + "/global/etc/xdg/qtchooser/test.conf"));
+
+    // test 2: check that it can create a global override
+    proc.setArguments(QStringList() << "-install" << "-f" << "test" << qmake);
+    proc.start();
+    QVERIFY(proc.waitForFinished());
+    VERIFY_NORMAL_EXIT(&proc);
+
+    // find the global file
+    {
+        QFile f(tempdir.path() + "/global/etc/xdg/qtchooser/test.conf");
+        QVERIFY2(f.open(QIODevice::ReadOnly), qPrintable(f.errorString()));
+        QCOMPARE(f.readAll(), expectedContents.toLocal8Bit());
+    }
 }
 
 QTEST_MAIN(tst_ToolChooser)

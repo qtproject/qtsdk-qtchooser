@@ -60,6 +60,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #if defined(_WIN32) || defined(__WIN32__)
 #  include <process.h>
@@ -68,7 +69,9 @@
 #  define EXE_SUFFIX ".exe"
 #else
 #  include <sys/types.h>
+#  include <sys/stat.h>
 #  include <dirent.h>
+#  include <fcntl.h>
 #  include <libgen.h>
 #  include <pwd.h>
 #  include <unistd.h>
@@ -87,7 +90,17 @@ enum Mode {
     PrintHelp,
     RunTool,
     ListVersions,
-    PrintEnvironment
+    PrintEnvironment,
+    Install
+};
+
+enum InstallOptions
+{
+    GlobalInstall    = 0,
+    LocalInstall     = 1,
+
+    NoOverwrite      = 0,
+    ForceOverwrite   = 2
 };
 
 struct Sdk
@@ -106,6 +119,7 @@ struct ToolWrapper
     int listVersions();
     int printEnvironment(const string &targetSdk);
     int runTool(const string &targetSdk, const string &targetTool, char **argv);
+    int install(const string &sdkName, const string &qmake, int installOptions);
 
 private:
     vector<string> searchPaths() const;
@@ -123,6 +137,7 @@ int ToolWrapper::printHelp()
 {
     puts("Usage:\n"
          "  qtchooser { -l | -list-versions | -print-env }\n"
+         "  qtchooser -install [-f] [-local] <name> <path-to-qmake>\n"
          "  qtchooser -run-tool=<tool name> [-qt=<Qt version>] [program arguments]\n"
          "  <executable name> [-qt=<Qt version>] [program arguments]\n"
          "\n"
@@ -204,6 +219,51 @@ bool linksBackToSelf(const char *link, const char *target)
     return false;
 }
 
+static bool readLine(FILE *f, string *result)
+{
+#if _POSIX_VERSION >= 200809L
+    size_t len = 0;
+    char *line = 0;
+    ssize_t read = getline(&line, &len, f);
+    if (read < 0) {
+        free(line);
+        return false;
+    }
+
+    line[strlen(line) - 1] = '\0';
+    *result = line;
+    free(line);
+#elif defined(PATH_MAX)
+    char buf[PATH_MAX];
+    if (!fgets(buf, PATH_MAX - 1, f))
+        return false;
+
+    buf[PATH_MAX - 1] = '\0';
+    buf[strlen(buf) - 1] = '\0';
+    *result = buf;
+#else
+# error "POSIX < 2008 and no PATH_MAX, fix me"
+#endif
+    return true;
+}
+
+static bool mkparentdir(string name)
+{
+    // create the dir containing this dir
+    size_t pos = name.rfind('/');
+    if (pos == string::npos)
+        return false;
+    name.erase(pos);
+    if (mkdir(name.c_str(), 0777) == -1) {
+        if (errno != ENOENT)
+            return false;
+        // try this dir's parent too
+        if (!mkparentdir(name))
+            return false;
+    }
+    return true;
+}
+
 int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char **argv)
 {
     Sdk sdk = selectSdk(targetSdk);
@@ -238,6 +298,105 @@ int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char
             argv0, argv[0], strerror(errno));
     return 1;
 #endif
+}
+
+static const char *to_number(int number)
+{
+    // obviously not thread-safe
+    static char buffer[sizeof "2147483647"];
+    snprintf(buffer, sizeof buffer, "%d", number);
+    return buffer;
+}
+
+int ToolWrapper::install(const string &sdkName, const string &qmake, int installOptions)
+{
+    if (qmake.size() == 0) {
+        fprintf(stderr, "%s: missing option: path to qmake\n", argv0);
+        return 1;
+    }
+
+    if ((installOptions & ForceOverwrite) == 0) {
+        Sdk matchedSdk = iterateSdks(sdkName, &ToolWrapper::matchSdk);
+        if (matchedSdk.isValid()) {
+            fprintf(stderr, "%s: SDK \"%s\" already exists\n", argv0, sdkName.c_str());
+            return 1;
+        }
+    }
+
+    // first of all, get the bin and lib dirs from qmake
+    string bindir, libdir;
+    FILE *bin, *lib;
+    bin = popen(("'" + qmake + "' -query QT_INSTALL_BINS").c_str(), "r");
+    lib = popen(("'" + qmake + "' -query QT_INSTALL_LIBS").c_str(), "r");
+
+    if (!readLine(bin, &bindir) || !readLine(lib, &libdir)\
+            || pclose(bin) == -1 || pclose(lib) == -1) {
+        fprintf(stderr, "%s: error running %s: %s\n", argv0, qmake.c_str(), strerror(errno));
+        return 1;
+    }
+
+    const string sdkFileName = sdkName + confSuffix;
+    const string fileContents = bindir + "\n" + libdir + "\n";
+    string sdkFullPath;
+
+    // get the list of paths to try and install the SDK on the first we are able to;
+    // since the list is sorted in search order, we need to try in the reverse order
+    const vector<string> paths = searchPaths();
+    vector<string>::const_iterator it = paths.end();
+    vector<string>::const_iterator prev = it - 1;
+    for ( ; it != paths.begin(); it = prev--) {
+        sdkFullPath = *prev + sdkFileName;
+
+        // are we trying to install here?
+        bool installHere = (installOptions & LocalInstall) == 0 || prev == paths.begin();
+        if (!installHere)
+            continue;
+
+#ifdef QTCHOOSER_TEST_MODE
+        puts(sdkFullPath.c_str());
+        puts(fileContents.c_str());
+        return 0;
+#else
+        // we're good, create the SDK name
+        string tempname = sdkFullPath + "." + to_number(rand());
+        int fd;
+        // create a temporary file here
+        while (true) {
+            fd = ::open(tempname.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0666);
+            if (fd == -1 && errno == EEXIST)
+                continue;
+            if (fd == -1 && errno == ENOENT) {
+                // could be because the dir itself doesn't exist
+                if (mkparentdir(tempname))
+                    continue;
+            }
+            break;
+        }
+        if (fd == -1)
+            continue;
+
+        size_t bytesWritten = 0;
+        while (bytesWritten < fileContents.size()) {
+            ssize_t written = ::write(fd, fileContents.data() + bytesWritten, fileContents.size() - bytesWritten);
+            if (written == -1) {
+                fprintf(stderr, "%s: error writing to \"%s\": %s\n", argv0, tempname.c_str(), strerror(errno));
+                ::close(fd);
+                return 1;
+            }
+
+            bytesWritten += written;
+        }
+
+        // atomic rename
+        ::close(fd);
+        if (rename(tempname.c_str(), sdkFullPath.c_str()) == 0)
+            return 0;   // success
+#endif
+    }
+
+    // if we got here, we failed to create the file
+    fprintf(stderr, "%s: could not create SDK: %s: %s\n", argv0, sdkFullPath.c_str(), strerror(errno));
+    return 1;
 }
 
 static vector<string> stringSplit(const char *source)
@@ -377,44 +536,10 @@ bool ToolWrapper::matchSdk(const string &targetSdk, Sdk &sdk)
         // 1) the first line contains the path to the Qt tools like qmake
         // 2) the second line contains the path to the Qt libraries
         // further lines are reserved for future enhancement
-#if _POSIX_VERSION >= 200809L
-        size_t len = 0;
-        char *line = 0;
-        ssize_t read = getline(&line, &len, f);
-        if (read < 0) {
-            free(line);
+        if (!readLine(f, &sdk.toolsPath) || !readLine(f, &sdk.librariesPath)) {
             fclose(f);
             return false;
         }
-        sdk.toolsPath = line;
-
-        read = getline(&line, &len, f);
-        if (read < 0) {
-            free(line);
-            fclose(f);
-            return false;
-        }
-        sdk.librariesPath = line;
-
-        free(line);
-#elif defined(PATH_MAX)
-        char buf[PATH_MAX];
-        if (!fgets(buf, PATH_MAX - 1, f)) {
-            fclose(f);
-            return false;
-        }
-        sdk.toolsPath = buf;
-
-        if (!fgets(buf, PATH_MAX - 1, f)) {
-            fclose(f);
-            return false;
-        }
-        sdk.librariesPath = buf;
-#else
-# error "POSIX < 2008 and no PATH_MAX, fix me"
-#endif
-        sdk.toolsPath.erase(sdk.toolsPath.size() - 1); // drop newline
-        sdk.librariesPath.erase(sdk.librariesPath.size() - 1); // drop newline
 
         fclose(f);
         return true;
@@ -487,6 +612,9 @@ int main(int argc, char **argv)
     // running qtchooser itself
     // check for our arguments
     operatingMode = PrintHelp;
+    int installOptions = 0;
+    string sdkName;
+    string qmakePath;
     for ( ; optind < argc; ++optind) {
         char *arg = argv[optind];
         if (*arg == '-') {
@@ -496,13 +624,29 @@ int main(int argc, char **argv)
             // double-dash arguments are OK too
             if (*arg == '-')
                 ++arg;
-            if (strcmp(arg, "list-versions") == 0 || strcmp(arg, "l") == 0) {
+            if (strcmp(arg, "install") == 0) {
+                operatingMode = Install;
+            } else if (operatingMode == Install && (strcmp(arg, "force") == 0 || strcmp(arg, "f") == 0)) {
+                installOptions |= ForceOverwrite;
+            } else if (strcmp(arg, "list-versions") == 0 || strcmp(arg, "l") == 0) {
                 operatingMode = ListVersions;
+            } else if (operatingMode == Install && strcmp(arg, "local") == 0) {
+                installOptions |= LocalInstall;
             } else if (beginsWith(arg, "print-env")) {
                 operatingMode = PrintEnvironment;
             } else if (strcmp(arg, "help") != 0) {
                 fprintf(stderr, "%s: unknown option: %s\n", argv0, arg - 1);
                 return 1;
+            }
+        } else if (operatingMode == Install) {
+            if (qmakePath.size()) {
+                fprintf(stderr, "%s: install mode takes exactly two arguments; unknown option: %s\n", argv0, arg);
+                return 1;
+            }
+            if (sdkName.size()) {
+                qmakePath = arg;
+            } else {
+                sdkName = strlen(arg) ? arg : "default";
             }
         } else {
             fprintf(stderr, "%s: unknown argument: %s\n", argv0, arg);
@@ -526,5 +670,8 @@ int main(int argc, char **argv)
 
     case ListVersions:
         return wrapper.listVersions();
+
+    case Install:
+        return wrapper.install(sdkName, qmakePath, installOptions);
     }
 }
