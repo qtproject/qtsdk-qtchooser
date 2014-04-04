@@ -65,6 +65,7 @@
 #if defined(_WIN32) || defined(__WIN32__)
 #  include <process.h>
 #  define execv _execv
+#  define stat _stat
 #  define PATH_SEP "\\"
 #  define EXE_SUFFIX ".exe"
 #else
@@ -111,7 +112,21 @@ struct Sdk
     string librariesPath;
 
     bool isValid() const { return !toolsPath.empty(); }
+    bool hasTool(const string &targetTool) const;
 };
+
+bool Sdk::hasTool(const string &targetTool) const
+{
+    struct stat st;
+    if (toolsPath.empty())
+        return false;
+    if (stat((toolsPath + PATH_SEP + targetTool).c_str(), &st))
+        return false;
+#ifdef S_IEXEC
+    return (st.st_mode & S_IEXEC);
+#endif
+    return true;
+}
 
 struct ToolWrapper
 {
@@ -126,8 +141,9 @@ private:
 
     typedef bool (*VisitFunction)(const string &targetSdk, Sdk &item);
     typedef void (*FinishFunction)(const set<string> &seenSdks);
-    Sdk iterateSdks(const string &targetSdk, VisitFunction visit, FinishFunction finish = 0);
-    Sdk selectSdk(const string &targetSdk);
+    Sdk iterateSdks(const string &targetSdk, VisitFunction visit, FinishFunction finish = 0,
+                    const string &targetTool = "");
+    Sdk selectSdk(const string &targetSdk, const string &targetTool = "");
 
     static void printSdks(const set<string> &seenNames);
     static bool matchSdk(const string &targetSdk, Sdk &sdk);
@@ -266,7 +282,7 @@ static bool mkparentdir(string name)
 
 int ToolWrapper::runTool(const string &targetSdk, const string &targetTool, char **argv)
 {
-    Sdk sdk = selectSdk(targetSdk);
+    Sdk sdk = selectSdk(targetSdk, targetTool);
     if (!sdk.isValid())
         return 1;
 
@@ -454,7 +470,8 @@ vector<string> ToolWrapper::searchPaths() const
     return paths;
 }
 
-Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit, FinishFunction finish)
+Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit, FinishFunction finish,
+                             const string &targetTool)
 {
     vector<string> paths = searchPaths();
     set<string> seenNames;
@@ -483,11 +500,20 @@ Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit, Finis
                 continue;
 
             seenNames.insert(d->d_name);
-            sdk.name = d->d_name;
-            sdk.name.resize(fnamelen + 1 - sizeof confSuffix);
+            if (targetTool.empty()) {
+                sdk.name = d->d_name;
+                sdk.name.resize(fnamelen + 1 - sizeof confSuffix);
+            } else {
+                // To make the check in matchSdk() succeed
+                sdk.name = "default";
+            }
             sdk.configFile = path + PATH_SEP + d->d_name;
-            if (visit && visit(targetSdk, sdk))
+            if (visit && visit(targetSdk, sdk)) {
+                // If a tool was requested, but not found here, skip this sdk
+                if (!targetTool.empty() && !sdk.hasTool(targetTool))
+                    continue;
                 return sdk;
+            }
         }
 
         closedir(dir);
@@ -499,9 +525,27 @@ Sdk ToolWrapper::iterateSdks(const string &targetSdk, VisitFunction visit, Finis
     return Sdk();
 }
 
-Sdk ToolWrapper::selectSdk(const string &targetSdk)
+// All tools that exist for only one Qt version should be
+// here. Other tools in this list are qdbus and qmlscene.
+bool fallbackAllowed(const string &tool)
 {
+    return tool == "qdbus" ||
+           tool == "qml" ||
+           tool == "qmlimportscanner" ||
+           tool == "qmlscene" ||
+           tool == "qtdiag" ||
+           tool == "qtpaths" ||
+           tool == "qtplugininfo";
+}
+
+Sdk ToolWrapper::selectSdk(const string &targetSdk, const string &targetTool)
+{
+    // First, try the requested SDK
     Sdk matchedSdk = iterateSdks(targetSdk, &ToolWrapper::matchSdk);
+    if (targetSdk.empty() && !matchedSdk.hasTool(targetTool) && fallbackAllowed(targetTool)) {
+        // If a tool was requested, fall back to any SDK that has it
+        matchedSdk = iterateSdks(string(), &ToolWrapper::matchSdk, 0, targetTool);
+    }
     if (!matchedSdk.isValid()) {
         fprintf(stderr, "%s: could not find a Qt installation of '%s'\n", argv0, targetSdk.c_str());
     }
