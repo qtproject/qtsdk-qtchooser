@@ -31,6 +31,7 @@ TOOLS = assistant \
 	qmltestrunner \
 	qmlviewer \
 	qtconfig \
+	qtdiag \
 	qtpaths \
 	rcc \
 	uic \
