@@ -56,3 +56,15 @@ function qt_env_removefrom()
     eval "$1=\"\${contents[*]}\""
 }
 
+# completion:
+function _qt()
+{
+    COMPREPLY=()
+    if [ ${#COMP_WORDS[@]} -eq 2 ] && [ $COMP_CWORD -eq 1 ]; then
+        local cur opts
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        opts=`qtchooser -list-versions`
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+    fi
+}
+complete -F _qt qt
