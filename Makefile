@@ -19,6 +19,7 @@ TOOLS = assistant \
 	qglinfo \
 	qhelpconverter \
 	qhelpgenerator \
+	qlalr \
 	qmake \
 	qml \
 	qml1plugindump \
