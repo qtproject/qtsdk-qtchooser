@@ -24,7 +24,9 @@ TOOLS = assistant \
 	qml \
 	qml1plugindump \
 	qmlbundle \
+	qmleasing \
 	qmlimportscanner \
+	qmllint \
 	qmlmin \
 	qmlplugindump \
 	qmlprofiler \
