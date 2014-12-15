@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2012 Intel Corporation.
+** Copyright (C) 2014 Intel Corporation.
 ** Contact: http://www.qt-project.org/legal
 **
 ** This file is part of the QtCore module of the Qt Toolkit.
@@ -206,7 +206,7 @@ bool linksBackToSelf(const char *link, const char *target)
 {
 #if !defined(_WIN32) && !defined(__WIN32__)
     char buf[512];
-    int count = readlink(link, buf, sizeof(buf));
+    int count = readlink(link, buf, sizeof(buf) - 1);
     if (count >= 0) {
         buf[count] = '\0';
         if (endsWith(buf, target) == 0) {
