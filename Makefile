@@ -45,6 +45,7 @@ TOOLS = assistant \
 # keep the above line empty
 
 MACTOOLS = macdeployqt
+QMAKE = qmake
 
 all:
 	cd src/qtchooser && $(MAKE)
@@ -74,7 +75,7 @@ uninstall:
 	;; esac
 
 tests/auto/Makefile: tests/auto/auto.pro
-	cd tests/auto && qmake -o Makefile auto.pro
+	cd tests/auto && $(QMAKE) -o Makefile auto.pro
 
 check: tests/auto/Makefile
 	cd src/qtchooser && $(MAKE) check
