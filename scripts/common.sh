@@ -60,6 +60,7 @@ function qt_select()
         # Remove old
         qt_env_removefrom LD_LIBRARY_PATH $QTLIBDIR
         qt_env_removefrom PKG_CONFIG_PATH $QTLIBDIR/pkgconfig
+        qt_env_removefrom CMAKE_PREFIX_PATH $QTDIR
 
         # Add new
         if [ x$1 != xnone ]; then
@@ -73,6 +74,9 @@ function qt_select()
             # try to get the QTDIR from qmake now
             QTDIR=$(qmake -query QT_INSTALL_PREFIX)
             export QTDIR
+
+            qt_env_addto CMAKE_PREFIX_PATH $QTDIR
+            export CMAKE_PREFIX_PATH
 
             # is this an uninstalled Qt build dir?
             if [ -f $QTDIR/.qmake.cache ]; then
