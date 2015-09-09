@@ -36,6 +36,7 @@ TOOLS = assistant \
 	qtconfig \
 	qtdiag \
 	qtpaths \
+	qtplugininfo \
 	rcc \
 	uic \
 	uic3 \
