@@ -79,8 +79,8 @@ function qt_select()
             export CMAKE_PREFIX_PATH
 
             # is this an uninstalled Qt build dir?
-            if [ -f $QTDIR/.qmake.cache ]; then
-                QTSRCDIR=$(sed -n '/QT_SOURCE_TREE *= */{s///;s/\$\$quote(\(.*\))$/\1/;p;}' $QTDIR/.qmake.cache)
+            if [ -f $QTDIR/Makefile ]; then
+                QTSRCDIR=$(dirname $(awk '/Project:/{print $NF}' $QTDIR/Makefile))
                 export QTSRCDIR
             else
                 unset QTSRCDIR
