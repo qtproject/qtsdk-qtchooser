@@ -72,19 +72,26 @@ function qt_select()
             export QTLIBDIR QT_SELECT
 
             # try to get the QTDIR from qmake now
-            QTDIR=$(qmake -query QT_INSTALL_PREFIX)
+            if QTSRCDIR=$(qmake -query QT_INSTALL_PREFIX/src); then
+                # Recent version of qmake that supports /get and /src
+                QTDIR=$(qmake -query QT_INSTALL_PREFIX/get)
+                export QTSRCDIR
+            else
+                # Older version
+                QTDIR=$(qmake -query QT_INSTALL_PREFIX)
+
+                # is this an uninstalled Qt build dir?
+                if [ -f $QTDIR/Makefile ]; then
+                    QTSRCDIR=$(dirname $(awk '/Project:/{print $NF}' $QTDIR/Makefile))
+                    export QTSRCDIR
+                else
+                    unset QTSRCDIR
+                fi
+            fi
             export QTDIR
 
             qt_env_addto CMAKE_PREFIX_PATH $QTDIR
             export CMAKE_PREFIX_PATH
-
-            # is this an uninstalled Qt build dir?
-            if [ -f $QTDIR/Makefile ]; then
-                QTSRCDIR=$(dirname $(awk '/Project:/{print $NF}' $QTDIR/Makefile))
-                export QTSRCDIR
-            else
-                unset QTSRCDIR
-            fi
         else
             unset QTLIBDIR QTSRCDIR QTDIR QT_SELECT
 
