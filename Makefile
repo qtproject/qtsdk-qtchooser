@@ -78,7 +78,7 @@ uninstall:
 tests/auto/Makefile: tests/auto/auto.pro
 	cd tests/auto && $(QMAKE) -o Makefile auto.pro
 
-check: tests/auto/Makefile
+check: all tests/auto/Makefile
 	cd src/qtchooser && $(MAKE) check
 	cd tests/auto && $(MAKE) check
 
