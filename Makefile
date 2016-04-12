@@ -93,9 +93,16 @@ dist: .git
 	git archive --prefix="$$name/" -9 --format=tar.gz -o $$name.tar.gz $$rev && \
 	git archive --prefix="$$name/" -9 --format=zip -v -o $$name.zip $$rev
 
+tagdist: .git
+	@git describe --exact-match --tags $(HEAD) >/dev/null 2>&1 || { \
+	  n=$$(git rev-list --count $(HEAD)) && \
+	  echo "Creating tag v$$n" && \
+	  git tag -a -m "qtchooser release $$n" v$$n; }
+	$(MAKE) dist
+
 distcheck: .git
 	git archive --prefix=qtchooser-distcheck/ --format=tar $(HEAD) | tar -xf -
 	cd qtchooser-distcheck && $(MAKE) check
 	-rm -rf qtchooser-distcheck
 
-.PHONY: all install uninstall check clean distclean dist
+.PHONY: all install uninstall check clean distclean dist tagdist distcheck
