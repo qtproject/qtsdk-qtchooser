@@ -113,11 +113,21 @@ function qcd
         echo "No Qt version selected."
         return 1
     end
-    set -l DIR $QTDIR
+
     if test (count $argv) -ge 1
-        set DIR $DIR/$argv[1]
+        cd $QTDIR/$argv[1]
+    else
+        # switch between src and bld dir (not changing sub dir)
+        if string match -q "$QTDIR*" (pwd)
+            set -l subdir (string replace "$QTDIR" "" (pwd))
+            cd $QTSRCDIR/$subdir
+        else if string match -q "$QTSRCDIR*" (pwd)
+            set -l subdir (string replace "$QTSRCDIR" "" (pwd))
+            cd $QTDIR/$subdir
+        else
+            cd $QTDIR
+        end
     end
-    cd $DIR
 end
 
 function __qt_qcd_paths
