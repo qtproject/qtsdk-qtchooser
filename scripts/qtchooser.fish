@@ -112,8 +112,8 @@ function qcd
         return 1
     end
     set -l DIR $QTDIR
-    if test count $argv -ge 1
-        set -l DIR $DIR/$argv[1]
+    if test (count $argv) -ge 1
+        set DIR $DIR/$argv[1]
     end
     cd $DIR
 end
