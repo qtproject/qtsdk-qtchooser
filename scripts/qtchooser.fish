@@ -106,6 +106,8 @@ function qt
     _qt_select $argv
 end
 
+complete -x -c qt -a '(qtchooser -list-versions)' -d "Select a Qt version"
+
 function qcd
     if test -z $QTDIR
         echo "No Qt version selected."
