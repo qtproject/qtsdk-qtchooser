@@ -120,3 +120,12 @@ function qcd
     cd $DIR
 end
 
+function __qt_qcd_paths
+    set -l token (commandline -ct)
+    cd $QTDIR
+    for d in $token*/
+        echo $d
+    end
+end
+
+complete -x -c qcd -a "(__qt_qcd_paths)"
