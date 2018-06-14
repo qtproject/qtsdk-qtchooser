@@ -221,11 +221,11 @@ static inline bool endsWith(const char *haystack, const char *needle)
 bool linksBackToSelf(const char *link, const char *target)
 {
 #if !defined(_WIN32) && !defined(__WIN32__)
-    char buf[512];
-    int count = readlink(link, buf, sizeof(buf) - 1);
+    char buf[MAXPATHLEN], buf2[MAXPATHLEN];
+    int count = readlink(realpath(link, buf2), buf, sizeof(buf) - 1);
     if (count >= 0) {
         buf[count] = '\0';
-        if (endsWith(buf, target) == 0) {
+        if (endsWith(buf, target)) {
             fprintf(stderr, "%s: could not exec '%s' since it links to %s itself. Check your installation.\n",
                     target, link, target);
             return true;
