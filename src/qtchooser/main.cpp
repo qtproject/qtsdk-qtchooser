@@ -225,7 +225,7 @@ bool linksBackToSelf(const char *link, const char *target)
     int count = readlink(link, buf, sizeof(buf) - 1);
     if (count >= 0) {
         buf[count] = '\0';
-        if (endsWith(buf, target) == 0) {
+        if (endsWith(buf, target)) {
             fprintf(stderr, "%s: could not exec '%s' since it links to %s itself. Check your installation.\n",
                     target, link, target);
             return true;
